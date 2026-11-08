@@ -1,0 +1,6 @@
+.pio
+.vscode/*
+!.vscode/extensions.json
+include/README
+lib/README
+test/README
