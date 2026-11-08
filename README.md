@@ -1,57 +1,59 @@
-# Sensor de luz com micro-ROS e ESP32
+# Light sensor with micro-ROS on ESP32
 
-Um ESP32 lê um sensor de luz (módulo LDR), acende um LED quando está escuro e publica o estado do sensor em tópicos do **ROS 2 Jazzy** usando **micro-ROS**. Qualquer nó ROS 2 no computador pode assinar esses tópicos como se o ESP32 fosse mais um nó da rede.
+An ESP32 reads a light sensor (LDR module), turns on an LED when it is dark and publishes the sensor state to **ROS 2 Jazzy** topics through **micro-ROS**. Any ROS 2 node on the computer can subscribe to these topics as if the ESP32 were just another node on the network.
 
-Fiz este projeto como exemplo prático da aula de integração de sensores do minicurso de ROS 2 do GAIA Robótica (UFTM).
+I built this project as the hands-on example for the sensor-integration class of the GAIA Robotics (UFTM) ROS 2 course.
 
-## Como funciona
+## How it works
 
 ```text
-Módulo LDR ──► ESP32 (nó "sensor_esp32") ──serial──► micro-ROS Agent ──► ROS 2
-                  │                                                     ├─ /sensor/valor   (std_msgs/Int32)
-                  └─► LED                                               └─ /sensor/alerta  (std_msgs/Bool)
+LDR module ──► ESP32 (node "sensor_esp32") ──serial──► micro-ROS Agent ──► ROS 2
+                  │                                                      ├─ /sensor/valor   (std_msgs/Int32)
+                  └─► LED                                                └─ /sensor/alerta  (std_msgs/Bool)
 ```
 
-A cada **100 ms** o firmware:
+Every **100 ms** the firmware:
 
-1. lê a saída digital do módulo LDR (`1` = escuro, `0` = claro; o limite é ajustado no trimpot do módulo);
-2. decide se há alerta (`escuro = alerta`);
-3. acende ou apaga o LED localmente;
-4. publica o valor lido em `/sensor/valor` e o alerta em `/sensor/alerta`.
+1. reads the digital output of the LDR module (`1` = dark, `0` = light; the threshold is set with the module's trimpot);
+2. sets the alert flag (`dark = alert`);
+3. turns the LED on or off locally;
+4. publishes the reading on `/sensor/valor` and the alert on `/sensor/alerta`.
 
-O ESP32 não fala ROS 2 diretamente: ele envia as mensagens pela serial para o **micro-ROS Agent**, que roda no computador e repassa tudo para a rede ROS 2.
+The ESP32 does not speak ROS 2 directly: it sends its messages over serial to the **micro-ROS Agent**, which runs on the computer and bridges them into the ROS 2 network.
 
-Se alguma etapa da inicialização do micro-ROS falhar (por exemplo, o agente não estar rodando), o LED azul da placa fica piscando rápido.
+If any step of the micro-ROS initialization fails (for example, the agent is not running), the board's blue LED blinks rapidly.
 
-## Montagem
+Topic names and code comments are in Portuguese (`valor` = value, `alerta` = alert).
 
-| Componente | Pino do ESP32 |
+## Wiring
+
+| Component | ESP32 pin |
 |---|---|
-| Saída digital (DO) do módulo LDR | GPIO 18 |
-| LED vermelho + resistor de 220 Ω | GPIO 19 |
-| LED azul da placa (sinal de erro) | GPIO 2 |
+| LDR module digital output (DO) | GPIO 18 |
+| Red LED + 220 Ω resistor | GPIO 19 |
+| On-board blue LED (error signal) | GPIO 2 |
 
-## Como rodar
+## Running it
 
-Requisitos: [PlatformIO](https://platformio.org/), ROS 2 Jazzy e Docker (para o agente).
+Requirements: [PlatformIO](https://platformio.org/), ROS 2 Jazzy and Docker (for the agent).
 
-**1. Gravar o firmware no ESP32**
+**1. Flash the firmware to the ESP32**
 
 ```bash
 pio run -t upload
 ```
 
-Na primeira compilação o PlatformIO baixa e compila a biblioteca [micro_ros_platformio](https://github.com/micro-ROS/micro_ros_platformio), o que demora alguns minutos.
+On the first build PlatformIO downloads and compiles the [micro_ros_platformio](https://github.com/micro-ROS/micro_ros_platformio) library, which takes a few minutes.
 
-**2. Subir o micro-ROS Agent** (troque `/dev/ttyUSB0` pela porta do seu ESP32)
+**2. Start the micro-ROS Agent** (replace `/dev/ttyUSB0` with your ESP32's port)
 
 ```bash
 docker run -it --rm --net=host --device=/dev/ttyUSB0 microros/micro-ros-agent:jazzy serial --dev /dev/ttyUSB0 -b 115200 -v6
 ```
 
-Se o agente subir depois do ESP32, aperte o botão EN da placa para ela reiniciar e se conectar.
+If the agent starts after the ESP32, press the board's EN button so it restarts and connects.
 
-**3. Ver os dados no ROS 2**
+**3. Read the data in ROS 2**
 
 ```bash
 ros2 topic list
@@ -59,15 +61,15 @@ ros2 topic echo /sensor/alerta
 ros2 topic echo /sensor/valor
 ```
 
-Cubra o sensor com a mão: o LED acende e `/sensor/alerta` passa para `true`.
+Cover the sensor with your hand: the LED turns on and `/sensor/alerta` switches to `true`.
 
-## Estrutura
+## Project layout
 
-| Caminho | Conteúdo |
+| Path | Contents |
 |---|---|
-| `src/main.cpp` | firmware: leitura do sensor, LED e publicação micro-ROS |
-| `platformio.ini` | placa `esp32dev`, framework Arduino, micro-ROS Jazzy via serial |
+| `src/main.cpp` | firmware: sensor reading, LED and micro-ROS publishing |
+| `platformio.ini` | `esp32dev` board, Arduino framework, micro-ROS Jazzy over serial |
 
-## Tecnologias
+## Stack
 
 C++ · ESP32 · Arduino framework · PlatformIO · micro-ROS (rclc) · ROS 2 Jazzy · Docker
